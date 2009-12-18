@@ -27,7 +27,8 @@
 			contentType: "json",
 			queryParam: "q",
 			onResult: null,
-			canCreate: false
+			canCreate: false,
+			forceLowerCase: false
 		}, options);
 
 		settings.classes = $.extend({
@@ -648,7 +649,11 @@
 		// Do a search and show the "searching" dropdown if the input is longer
 		// than settings.minChars
 		function do_search(immediate) {
-			var query = input_box.val().toLowerCase();
+			var query = input_box.val();
+			
+			if(settings.forceLowerCase) {
+				query = query.toLowerCase();
+			}
 
 			if (query && query.length) {
 				if(selected_token) {
