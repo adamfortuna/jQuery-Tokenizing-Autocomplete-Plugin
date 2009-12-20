@@ -19,7 +19,7 @@
 			createText: "Create",
 			searchDelay: 300,
 			allowNewValues: false,
-			prePopulateFromInput: false,
+			initialValues: null,
 			minChars: 1,
 			tokenLimit: null,
 			jsonContainer: null,
@@ -28,7 +28,8 @@
 			queryParam: "q",
 			onResult: null,
 			canCreate: false,
-			forceLowerCase: false
+			forceLowerCase: false,
+			createIdentifier: ""  // If using canCreate, this will prefix newly created tags
 		}, options);
 
 		settings.classes = $.extend({
@@ -86,7 +87,7 @@
 		// Keep track of the timeout
 		var timeout;
 
-		// Create a new text input an attach keyup events
+		// Create a new text input and attach keyup events
 		var input_box = $("<input type=\"text\">")
 		.css({
 			outline: "none"
@@ -171,8 +172,6 @@
 				case KEY.RETURN:
 				case KEY.COMMA:
 					if(selected_dropdown_item) {
-						//var li_data = $.data($(selected_dropdown_item).get(0), "tokeninput");
-						//add_token(li_data.id, li_data.name);
 						add_token($(selected_dropdown_item));
 						return false;
 					} else if(settings.allowNewValues) {
@@ -217,7 +216,9 @@
 		.addClass(settings.classes.tokenList)
 		.insertAfter(hidden_input)
 		.click(function (event) {
-			var li = get_element_from_event(event, "li");
+			// var $t = $(event.currentTarget);
+			// var li = $t.hasClass(settings.classes.tokenList) ? $(event.currentTarget).find("li:first") : get_element_from_event(event, "li");	
+			var li = get_element_from_event(event, "li." + settings.classes.token);
 			if(li && li.get(0) != input_token.get(0)) {
 				toggle_select_token(li);
 				return false;
@@ -305,6 +306,13 @@
 					var id_string = li_data[i].id + ","
 					hidden_input.val(hidden_input.val() + id_string);
 				}
+			} else if(settings.initialValues) {
+				hidden_input.val('');
+				$.each(settings.initialValues, function() {
+					create_token(this);
+				});
+			} else {
+				hidden_input.val('');
 			}
 		}
 
@@ -324,7 +332,6 @@
 		function get_element_from_event (event, element_type) {
 			var target = $(event.target);
 			var element = null;
-
 			if(target.is(element_type)) {
 				element = target;
 			} else if(target.parent(element_type).length) {
@@ -375,8 +382,11 @@
 			hide_dropdown();
 
 			// Save this token id
-			var id_string = li_data.id + ","
-			hidden_input.val(hidden_input.val() + id_string);
+			//var id_string = li_data[i].id + ","
+			var current_value = hidden_input.val();
+			current_value = (current_value == "") ? current_value : (current_value+",")
+			hidden_input.val(current_value + li_data.id);
+
         
 			token_count++;
         
@@ -414,7 +424,6 @@
 			return;
 			var string = input_box.val().toLowerCase();
 			if(string.length > 0) {
-				//add_token(string, string);
 				var this_token = $("<li><p>"+string+"</p> </li>")
 				.addClass(settings.classes.token)
 				.insertBefore(input_token);
@@ -551,6 +560,7 @@
 				})
 				.mousedown(function (event) {
 					// Stop user selecting text on tokens
+					add_token(get_element_from_event(event, "li"));
 					return false;
 				})
 				.hide();
@@ -606,7 +616,7 @@
 					}
                 
 					$.data(li.get(0), "tokeninput", {
-						"id": "+" + query,
+						"id": settings.createIdentifier + query,
 						"name": query
 					});
 				}
