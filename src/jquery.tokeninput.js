@@ -20,6 +20,7 @@
 			searchDelay: 300,
 			allowNewValues: false,
 			initialValues: null,
+			defaultOptions: null,
 			minChars: 1,
 			tokenLimit: null,
 			jsonContainer: null,
@@ -87,6 +88,10 @@
 		// Keep track of the timeout
 		var timeout;
 
+		var show_dropdown = false,
+				hide_dropdown_timeout = null,
+				show_dropdown_timeout = null;
+
 		// Create a new text input and attach keyup events
 		var input_box = $("<input type=\"text\">")
 		.css({
@@ -94,14 +99,15 @@
 		})
 		.focus(function () {
 			if (settings.tokenLimit == null || settings.tokenLimit != token_count) {
-				show_dropdown_hint();
+				window.clearTimeout(hide_dropdown_timeout);
+				setTimeout(function(){ show_dropdown_hint(), 200 });
 			}
 		})
 		.blur(function () {
 			// If the user has been typing, create what they typed as a new value
 			if(settings.allowNewValues) create_new_token();
-        	
-			hide_dropdown();
+			if(settings.defaultOptions) { hide_dropdown_timeout = setTimeout(function(){ hide_dropdown(); }, 200); }
+			else { hide_dropdown(); }
 		})
 		.keydown(function (event) {
 			var previous_token;
@@ -271,48 +277,21 @@
 		// Functions
 		//
 
-
 		// Pre-populate list if items exist
 		function init_list () {
-			li_data = settings.prePopulate;
-			if(li_data && li_data.length) {
-				for(var i in li_data) {
-					var this_token = $("<li><p>"+li_data[i].name+"</p> </li>")
-					.addClass(settings.classes.token)
-					.insertBefore(input_token);
-
-					$("<span>x</span>")
-					.addClass(settings.classes.tokenDelete)
-					.appendTo(this_token)
-					.click(function () {
-						delete_token($(this).parent());
-						return false;
-					});
-
-					$.data(this_token.get(0), "tokeninput", {
-						"id": li_data[i].id,
-						"name": li_data[i].name
-						});
-
-					// Clear input box and make sure it keeps focus
-					input_box
-					.val('');
-					//.focus();
-
-					// Don't show the help dropdown, they've got the idea
-					hide_dropdown();
-
-					// Save this token id
-					var id_string = li_data[i].id + ","
-					hidden_input.val(hidden_input.val() + id_string);
-				}
-			} else if(settings.initialValues) {
+			if(settings.initialValues) {
 				hidden_input.val('');
 				$.each(settings.initialValues, function() {
 					create_token(this);
 				});
 			} else {
 				hidden_input.val('');
+			}
+		}
+
+		function init_default_options() {
+			if(settings.defaultOptions) {
+				populate_dropdown("", settings.defaultOptions);
 			}
 		}
 
@@ -493,16 +472,11 @@
 			input_box.focus();
 
 			// Delete this token's id from hidden input
-			var str = hidden_input.val()
-			var start = str.indexOf(token_data.id+",");
-			var end = str.indexOf(",", start) + 1;
+			var tokens = hidden_input.val().split(",");
+			var to_delete = tokens.indexOf(token_data.id);
+			tokens.splice(to_delete, 1);
+			hidden_input.val(tokens.join(","));
 
-			if(end >= str.length) {
-				hidden_input.val(str.slice(0, start));
-			} else {
-				hidden_input.val(str.slice(0, start) + str.slice(end, str.length));
-			}
-        
 			token_count--;
         
 			if (settings.tokenLimit != null) {
@@ -520,8 +494,12 @@
 
 		// Hide and clear the results dropdown
 		function hide_dropdown () {
-			dropdown.hide().empty();
-			selected_dropdown_item = null;
+			if(!show_dropdown) {
+				dropdown.hide().empty();
+				selected_dropdown_item = null;
+			} else { 
+				show_dropdown = false
+			}
 		}
 
 		function show_dropdown_searching () {
@@ -536,6 +514,12 @@
 			dropdown
 			.html("<p>"+settings.hintText+"</p>")
 			.show();
+			if(settings.defaultOptions) {
+				dropdown.find("a.defaultOptions").click(function(event) {
+					show_dropdown = true;
+					populate_dropdown("", settings.defaultOptions);
+				});
+			}
 		}
 
 		// Highlight the query part of the search term
@@ -544,7 +528,7 @@
 		}
 
 		// Populate the results dropdown with some results
-		function populate_dropdown (query, results) {
+		function populate_dropdown(query, results) {
 			if(results.length || settings.canCreate) {
 				dropdown.empty();
 				var dropdown_ul = $("<ul>")
@@ -632,6 +616,12 @@
 					dropdown
 					.html("<p>"+settings.noResultsText+"</p>")
 					.show();
+					if(settings.defaultOptions) {
+						dropdown.find("a.defaultOptions").click(function(event) {
+							show_dropdown = true;
+							populate_dropdown("", settings.defaultOptions);
+						});
+					}
 				} else {
 					hide_dropdown();
 				}
